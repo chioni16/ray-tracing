@@ -36,12 +36,7 @@ impl Matrix {
 
     pub fn transpose(&self) -> Self {
         let transpose = (0..self.0[0].len())
-            .map(|i| {
-                self.0
-                    .iter()
-                    .map(|inner| inner[i])
-                    .collect::<Vec<_>>()
-            })
+            .map(|i| self.0.iter().map(|inner| inner[i]).collect::<Vec<_>>())
             .collect::<Vec<_>>();
 
         Self(transpose)

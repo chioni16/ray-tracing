@@ -1,4 +1,9 @@
-use crate::{float4::Float4, matrix::Matrix, object::Object, util::EPSILON};
+use crate::{
+    float4::Float4,
+    matrix::Matrix,
+    object::{Object, Shape},
+    util::EPSILON,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Ray {
@@ -36,7 +41,7 @@ impl Default for Intersection {
     fn default() -> Self {
         Self {
             distance: 0.0,
-            point: Float4::new_point(0.0, 0.0, 0.0),
+            point: Float4::origin(),
             eyev: Float4::new_vector(0.0, 0.0, 0.0),
             normalv: Float4::new_vector(0.0, 0.0, 0.0),
             inside: false,
@@ -44,7 +49,11 @@ impl Default for Intersection {
                 origin: Float4::origin(),
                 direction: Float4::new_vector(0.0, 0.0, 0.0),
             },
-            object: Object::Sphere(Matrix::identity(4), Default::default()),
+            object: Object {
+                shape: Shape::Sphere,
+                transform: Matrix::identity(4),
+                material: Default::default(),
+            },
         }
     }
 }
@@ -131,7 +140,11 @@ mod test {
 
     #[test]
     fn intersection_sphere() {
-        let sphere1 = Object::Sphere(Matrix::identity(4), Material::default());
+        let sphere1 = Object {
+            shape: Shape::Sphere,
+            transform: Matrix::identity(4),
+            material: Material::default(),
+        };
         let ray = Ray {
             origin: Float4::new_point(0.0, 1.0, -5.0),
             direction: Float4::new_vector(0.0, 0.0, 1.0),
@@ -188,7 +201,11 @@ mod test {
             vec![-6.0, -4.0]
         );
 
-        let sphere2 = Object::Sphere(scale(2.0, 2.0, 2.0), Material::default());
+        let sphere2 = Object {
+            shape: Shape::Sphere,
+            transform: scale(2.0, 2.0, 2.0),
+            material: Material::default(),
+        };
         let ray = Ray {
             origin: Float4::new_point(0.0, 0.0, -5.0),
             direction: Float4::new_vector(0.0, 0.0, 1.0),
@@ -203,7 +220,11 @@ mod test {
             vec![3.0, 7.0]
         );
 
-        let sphere3 = Object::Sphere(translate(5.0, 0.0, 0.0), Material::default());
+        let sphere3 = Object {
+            shape: Shape::Sphere,
+            transform: translate(5.0, 0.0, 0.0),
+            material: Material::default(),
+        };
         let ray = Ray {
             origin: Float4::new_point(0.0, 0.0, -5.0),
             direction: Float4::new_vector(0.0, 0.0, 1.0),
@@ -223,22 +244,38 @@ mod test {
     fn hit_sphere() {
         let i1 = Intersection {
             distance: 5.0,
-            object: Object::Sphere(Matrix::identity(4), Material::default()),
+            object: Object {
+                shape: Shape::Sphere,
+                transform: Matrix::identity(4),
+                material: Material::default(),
+            },
             ..Default::default()
         };
         let i2 = Intersection {
             distance: 7.0,
-            object: Object::Sphere(Matrix::identity(4), Material::default()),
+            object: Object {
+                shape: Shape::Sphere,
+                transform: Matrix::identity(4),
+                material: Material::default(),
+            },
             ..Default::default()
         };
         let i3 = Intersection {
             distance: -3.0,
-            object: Object::Sphere(Matrix::identity(4), Material::default()),
+            object: Object {
+                shape: Shape::Sphere,
+                transform: Matrix::identity(4),
+                material: Material::default(),
+            },
             ..Default::default()
         };
         let i4 = Intersection {
             distance: 2.0,
-            object: Object::Sphere(Matrix::identity(4), Material::default()),
+            object: Object {
+                shape: Shape::Sphere,
+                transform: Matrix::identity(4),
+                material: Material::default(),
+            },
             ..Default::default()
         };
         let intersections = Intersections(vec![i1.clone(), i2.clone(), i3.clone(), i4.clone()]);
@@ -269,15 +306,20 @@ mod test {
 
     #[test]
     fn normal_at_sphere() {
-        let sphere1 = Object::Sphere(translate(0.0, 1.0, 0.0), Material::default());
+        let sphere1 = Object {
+            shape: Shape::Sphere,
+            transform: translate(0.0, 1.0, 0.0),
+            material: Material::default(),
+        };
         let normal = sphere1.normal_at(Float4::new_point(0.0, 1.70711, -0.70711));
         let expected = Float4::new_vector(0.0, 0.70711, -0.70711);
         assert_eq!(normal, expected);
 
-        let sphere2 = Object::Sphere(
-            scale(1.0, 0.5, 1.0) * rotate_z(PI / 5.0),
-            Material::default(),
-        );
+        let sphere2 = Object {
+            shape: Shape::Sphere,
+            transform: scale(1.0, 0.5, 1.0) * rotate_z(PI / 5.0),
+            material: Material::default(),
+        };
         let normal2 = sphere2.normal_at(Float4::new_point(
             0.0,
             1.0 / 2.0_f64.sqrt(),
@@ -289,7 +331,11 @@ mod test {
 
     #[test]
     fn intersection_in_out() {
-        let sphere1 = Object::Sphere(Matrix::identity(4), Material::default());
+        let sphere1 = Object {
+            shape: Shape::Sphere,
+            transform: Matrix::identity(4),
+            material: Material::default(),
+        };
         let ray1 = Ray {
             origin: Float4::new_point(0.0, 0.0, -5.0),
             direction: Float4::new_vector(0.0, 0.0, 1.0),
@@ -298,9 +344,13 @@ mod test {
         let intersection1 = Intersection::new(&ray1, &sphere1, distance1);
         assert!(!intersection1.inside);
 
-        let sphere2 = Object::Sphere(Matrix::identity(4), Material::default());
+        let sphere2 = Object {
+            shape: Shape::Sphere,
+            transform: Matrix::identity(4),
+            material: Material::default(),
+        };
         let ray2 = Ray {
-            origin: Float4::new_point(0.0, 0.0, 0.0),
+            origin: Float4::origin(),
             direction: Float4::new_vector(0.0, 0.0, 1.0),
         };
         let distance2 = 1.0;
@@ -318,7 +368,11 @@ mod test {
             direction: Float4::new_vector(0.0, 0.0, 0.1),
         };
 
-        let s = Object::Sphere(translate(0.0, 0.0, 1.0), Material::default());
+        let s = Object {
+            shape: Shape::Sphere,
+            transform: translate(0.0, 0.0, 1.0),
+            material: Material::default(),
+        };
         let i = Intersection::new(&r, &s, 5.0);
         assert!(i.over_point().0[2] < -EPSILON / 2.0);
         assert!(i.point().0[2] > i.over_point().0[2]);

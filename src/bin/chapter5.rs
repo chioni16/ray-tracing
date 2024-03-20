@@ -2,7 +2,7 @@ use ray::canvas::Canvas;
 use ray::colour::Colour;
 use ray::float4::Float4;
 use ray::matrix::{scale, shear};
-use ray::object::{Material, Object};
+use ray::object::{Material, Object, Shape};
 use ray::ray::Ray;
 
 use std::path::Path;
@@ -17,14 +17,15 @@ const BLUE: Colour = Colour::new(0.0, 0.0, 1.0);
 fn main() {
     let canvas_mutex = Mutex::new(Canvas::new(CANVAS_PIXELS, CANVAS_PIXELS, Colour::black()));
 
-    let sphere = Object::Sphere(
+    let sphere = Object {
+        shape: Shape::Sphere,
         // transform: Matrix::identity(4),
         // transform: scale(1.0, 0.5, 1.0),
         // transform: scale(0.5, 1.0, 1.0),
         // transform: rotate_z(PI/4.0) * scale(0.5, 1.0, 1.0),
-        shear(1.0, 0.0, 0.0, 0.0, 0.0, 0.0) * scale(0.5, 1.0, 1.0),
-        Material::default(),
-    );
+        transform: shear(1.0, 0.0, 0.0, 0.0, 0.0, 0.0) * scale(0.5, 1.0, 1.0),
+        material: Material::default(),
+    };
 
     let ray_origin = Float4::new_point(0.0, 0.0, -5.0);
     let wall_z = 10.0;

@@ -59,3 +59,11 @@ impl Mul<Colour> for Colour {
         self.hadamard_product(rhs)
     }
 }
+
+impl Mul<f64> for Colour {
+    type Output = Self;
+
+    fn mul(self, rhs: f64) -> Self::Output {
+        self.scalar_product(rhs)
+    }
+}

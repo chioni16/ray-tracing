@@ -2,7 +2,7 @@ use crate::{
     colour::Colour,
     float4::Float4,
     matrix::{scale, Matrix},
-    object::{Material, Object, PointLight},
+    object::{Material, Object, PointLight, Shape},
     ray::{Intersection, Intersections, Ray},
 };
 
@@ -24,7 +24,7 @@ impl World {
 
     pub fn shade_hit(&self, intersection: &Intersection) -> Colour {
         let over_point = intersection.over_point();
-        intersection.object().material().lighting(
+        intersection.object().lighting(
             self.light,
             over_point,
             intersection.eyev(),
@@ -59,20 +59,25 @@ impl Default for World {
     fn default() -> Self {
         let light = PointLight {
             position: Float4::new_point(-10.0, 10.0, -10.0),
-            intensity: Colour::white(),
+            colour: Colour::white(),
         };
 
-        let s1 = Object::Sphere(
-            Matrix::identity(4),
-            Material {
+        let s1 = Object {
+            shape: Shape::Sphere,
+            transform: Matrix::identity(4),
+            material: Material {
                 colour: Colour::new(0.8, 1.0, 0.6),
                 diffuse: 0.7,
                 specular: 0.2,
                 ..Default::default()
             },
-        );
+        };
 
-        let s2 = Object::Sphere(scale(0.5, 0.5, 0.5), Material::default());
+        let s2 = Object {
+            shape: Shape::Sphere,
+            transform: scale(0.5, 0.5, 0.5),
+            material: Material::default(),
+        };
 
         Self {
             light,
@@ -114,7 +119,7 @@ mod test {
         let w2 = World {
             light: PointLight {
                 position: Float4::new_point(0.0, 0.25, 0.0),
-                intensity: Colour::new(1.0, 1.0, 1.0),
+                colour: Colour::new(1.0, 1.0, 1.0),
             },
             ..Default::default()
         };
@@ -125,12 +130,20 @@ mod test {
         let i2 = Intersection::new(&r2, &w2.objects[1], 0.5);
         assert_eq!(w2.shade_hit(&i2), Colour::new(0.90498, 0.90498, 0.90498));
 
-        let s3_1 = Object::Sphere(Matrix::identity(4), Material::default());
-        let s3_2 = Object::Sphere(translate(0.0, 0.0, 10.0), Material::default());
+        let s3_1 = Object {
+            shape: Shape::Sphere,
+            transform: Matrix::identity(4),
+            material: Material::default(),
+        };
+        let s3_2 = Object {
+            shape: Shape::Sphere,
+            transform: translate(0.0, 0.0, 10.0),
+            material: Material::default(),
+        };
         let w3 = World {
             light: PointLight {
                 position: Float4::new_point(0.0, 0.0, -10.0),
-                intensity: Colour::new(1.0, 1.0, 1.0),
+                colour: Colour::new(1.0, 1.0, 1.0),
             },
             objects: vec![s3_1, s3_2.clone()],
         };
@@ -158,23 +171,25 @@ mod test {
         };
         assert_eq!(w2.colour_at(&r2), Colour::new(0.38066, 0.47583, 0.2855));
 
-        let s1 = Object::Sphere(
-            Matrix::identity(4),
-            Material {
+        let s1 = Object {
+            shape: Shape::Sphere,
+            transform: Matrix::identity(4),
+            material: Material {
                 colour: Colour::new(0.8, 1.0, 0.6),
                 diffuse: 0.7,
                 specular: 0.2,
                 ambient: 1.0,
                 ..Default::default()
             },
-        );
-        let s2 = Object::Sphere(
-            scale(0.5, 0.5, 0.5),
-            Material {
+        };
+        let s2 = Object {
+            shape: Shape::Sphere,
+            transform: scale(0.5, 0.5, 0.5),
+            material: Material {
                 ambient: 1.0,
                 ..Default::default()
             },
-        );
+        };
         let w3 = World {
             objects: vec![s1, s2],
             ..Default::default()
