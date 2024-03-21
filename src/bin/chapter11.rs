@@ -1,7 +1,7 @@
 use ray::camera::Camera;
 use ray::colour::Colour;
 use ray::float4::Float4;
-use ray::matrix::{rotate_x, rotate_y, rotate_z, scale, shear, translate, view_transform, Matrix};
+use ray::matrix::{rotate_x, rotate_z, scale, translate, view_transform, Matrix};
 use ray::object::{Material, Object, PointLight, Shape};
 use ray::pattern::{Pattern, PatternKind};
 use ray::world::World;
@@ -41,6 +41,8 @@ fn main() {
             specular: 0.1,
             shininess: 50.0,
             reflective: 0.3,
+            transparency: 0.6,
+            refractive_index: 2.0,
             pattern: Some(Pattern {
                 kind: PatternKind::Ring(Colour::new(1.0, 0.0, 0.0), Colour::new(0.0, 0.0, 1.0)),
                 transform: rotate_x(PI / 3.0) * scale(0.25, 0.75, 0.8),
@@ -97,5 +99,5 @@ fn main() {
     );
 
     let image = camera.render(world);
-    image.to_file(Path::new("images/chapter11.ppm")).unwrap();
+    image.to_file(Path::new("images/chapter11_2.ppm")).unwrap();
 }

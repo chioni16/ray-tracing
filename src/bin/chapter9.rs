@@ -1,7 +1,7 @@
 use ray::camera::Camera;
 use ray::colour::Colour;
 use ray::float4::Float4;
-use ray::matrix::{rotate_x, rotate_y, rotate_z, scale, translate, view_transform, Matrix};
+use ray::matrix::{scale, translate, view_transform, Matrix};
 use ray::object::{Material, Object, PointLight, Shape};
 use ray::world::World;
 

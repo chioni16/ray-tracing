@@ -59,7 +59,7 @@ impl Object {
             }
         };
 
-        Intersections(
+        Intersections::new(
             distances
                 .iter()
                 .map(|distance| Intersection::new(ray, self, *distance))
@@ -141,51 +141,9 @@ pub struct Material {
     pub specular: f64,
     pub shininess: f64,
     pub reflective: f64,
+    pub transparency: f64,
+    pub refractive_index: f64,
     pub pattern: Option<Pattern>,
-}
-
-impl Material {
-    // pub fn lighting(
-    //     &self,
-    //     light: PointLight,
-    //     point: Float4,
-    //     eyev: Float4,
-    //     normalv: Float4,
-    //     in_shadow: bool,
-    // ) -> Colour {
-    //     let colour = self
-    //         .pattern
-    //         .as_ref()
-    //         .map_or(self.colour, |pattern| pattern.at(point));
-
-    //     let effective_colour = colour * light.colour;
-    //     let ambient = effective_colour.scalar_product(self.ambient);
-
-    //     if in_shadow {
-    //         return ambient;
-    //     }
-
-    //     let lightv = (light.position - point).normalise();
-    //     let light_dot_normal = lightv.dot(normalv);
-    //     let (diffuse, specular) = if light_dot_normal < 0.0 {
-    //         (Colour::black(), Colour::black())
-    //     } else {
-    //         let diffuse = effective_colour.scalar_product(self.diffuse * light_dot_normal);
-
-    //         let reflectv = (-lightv).reflect(normalv);
-    //         let reflect_dot_eye = reflectv.dot(eyev);
-    //         let specular = if reflect_dot_eye <= 0.0 {
-    //             Colour::black()
-    //         } else {
-    //             let factor = reflect_dot_eye.powf(self.shininess);
-    //             light.colour.scalar_product(self.specular * factor)
-    //         };
-
-    //         (diffuse, specular)
-    //     };
-
-    //     ambient + diffuse + specular
-    // }
 }
 
 impl Default for Material {
@@ -197,6 +155,8 @@ impl Default for Material {
             specular: 0.9,
             shininess: 200.0,
             reflective: 0.0,
+            transparency: 0.0,
+            refractive_index: 1.0,
             pattern: None,
         }
     }

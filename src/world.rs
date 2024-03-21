@@ -5,7 +5,6 @@ use crate::{
     object::{Material, Object, PointLight, Shape},
     ray::{Intersection, Intersections, Ray},
     util::float_is_eq,
-    REFLECTION_RECURSION_LIMIT,
 };
 
 pub struct World {
@@ -18,10 +17,10 @@ impl World {
         let mut is = self
             .objects
             .iter()
-            .flat_map(|object| object.intersect(ray).0)
+            .flat_map(|object| object.intersect(ray).into_inner())
             .collect::<Vec<_>>();
         is.sort_by(|a, b| a.distance().total_cmp(&b.distance()));
-        Intersections(is)
+        Intersections::new(is)
     }
 
     pub fn shade_hit(&self, intersection: &Intersection, remaining: u8) -> Colour {
@@ -35,8 +34,15 @@ impl World {
         );
 
         let reflected = self.reflected_colour(intersection, remaining);
+        let refracted = self.refracted_colour(intersection, remaining);
 
-        surface + reflected
+        let material = intersection.object().material();
+        if material.reflective > 0.0 && material.transparency > 0.0 {
+            let reflectance = intersection.schlick();
+            surface + reflected * reflectance + refracted * (1.0 - reflectance)
+        } else {
+            surface + reflected + refracted
+        }
     }
 
     pub fn colour_at(&self, ray: &Ray, remaining: u8) -> Colour {
@@ -72,6 +78,29 @@ impl World {
         let colour = self.colour_at(&reflect_ray, remaining - 1);
         colour * intersection.object().material().reflective
     }
+
+    pub fn refracted_colour(&self, intersection: &Intersection, remaining: u8) -> Colour {
+        if remaining == 0 || float_is_eq(intersection.object().material().transparency, 0.0) {
+            return Colour::black();
+        }
+
+        let n_ratio = intersection.n1() / intersection.n2();
+        let cos_i = intersection.eyev().dot(intersection.normalv());
+        let sin2_t = n_ratio.powi(2) * (1.0 - cos_i.powi(2));
+        if sin2_t > 1.0 {
+            return Colour::black();
+        }
+
+        let cos_t = (1.0 - sin2_t).sqrt();
+        let direction = intersection.normalv().scalar_mul(n_ratio * cos_i - cos_t)
+            - intersection.eyev().scalar_mul(n_ratio);
+        let refract_ray = Ray {
+            origin: intersection.under_point(),
+            direction,
+        };
+
+        self.colour_at(&refract_ray, remaining - 1) * intersection.object().material().transparency
+    }
 }
 
 impl Default for World {
@@ -106,7 +135,14 @@ impl Default for World {
 }
 
 mod test {
-    use crate::{float4::Float4, matrix::translate, ray::Ray, util::float_is_eq};
+    use crate::{
+        float4::Float4,
+        matrix::translate,
+        pattern::{Pattern, PatternKind},
+        ray::Ray,
+        util::float_is_eq,
+        REF_RECURSION_LIMIT
+    };
 
     use super::*;
 
@@ -118,11 +154,11 @@ mod test {
             direction: Float4::new_vector(0.0, 0.0, 1.0),
         };
         let is = w.intersect(&r);
-        assert_eq!(is.0.len(), 4);
-        assert!(float_is_eq(is.0[0].distance(), 4.0));
-        assert!(float_is_eq(is.0[1].distance(), 4.5));
-        assert!(float_is_eq(is.0[2].distance(), 5.5));
-        assert!(float_is_eq(is.0[3].distance(), 6.0));
+        assert_eq!(is.count(), 4);
+        assert!(float_is_eq(is.get_intersection_at(0).distance(), 4.0));
+        assert!(float_is_eq(is.get_intersection_at(1).distance(), 4.5));
+        assert!(float_is_eq(is.get_intersection_at(2).distance(), 5.5));
+        assert!(float_is_eq(is.get_intersection_at(3).distance(), 6.0));
     }
 
     #[test]
@@ -134,7 +170,7 @@ mod test {
         };
         let i1 = Intersection::new(&r1, &w1.objects[0], 4.0);
         assert_eq!(
-            w1.shade_hit(&i1, REFLECTION_RECURSION_LIMIT),
+            w1.shade_hit(&i1, REF_RECURSION_LIMIT),
             Colour::new(0.38066, 0.47583, 0.2855)
         );
 
@@ -151,7 +187,7 @@ mod test {
         };
         let i2 = Intersection::new(&r2, &w2.objects[1], 0.5);
         assert_eq!(
-            w2.shade_hit(&i2, REFLECTION_RECURSION_LIMIT),
+            w2.shade_hit(&i2, REF_RECURSION_LIMIT),
             Colour::new(0.90498, 0.90498, 0.90498)
         );
 
@@ -178,7 +214,7 @@ mod test {
         };
         let i3 = Intersection::new(&r3, &s3_2, 4.0);
         assert_eq!(
-            w3.shade_hit(&i3, REFLECTION_RECURSION_LIMIT),
+            w3.shade_hit(&i3, REF_RECURSION_LIMIT),
             Colour::new(0.1, 0.1, 0.1)
         );
 
@@ -198,7 +234,7 @@ mod test {
         };
         let i4 = Intersection::new(&r4, &plane, 2f64.sqrt());
         assert_eq!(
-            w4.shade_hit(&i4, REFLECTION_RECURSION_LIMIT),
+            w4.shade_hit(&i4, REF_RECURSION_LIMIT),
             Colour::new(0.87675, 0.92434, 0.82917)
         );
     }
@@ -210,10 +246,7 @@ mod test {
             origin: Float4::new_point(0.0, 0.0, -5.0),
             direction: Float4::new_vector(0.0, 1.0, 0.0),
         };
-        assert_eq!(
-            w1.colour_at(&r1, REFLECTION_RECURSION_LIMIT),
-            Colour::black()
-        );
+        assert_eq!(w1.colour_at(&r1, REF_RECURSION_LIMIT), Colour::black());
 
         let w2 = World::default();
         let r2 = Ray {
@@ -221,7 +254,7 @@ mod test {
             direction: Float4::new_vector(0.0, 0.0, 1.0),
         };
         assert_eq!(
-            w2.colour_at(&r2, REFLECTION_RECURSION_LIMIT),
+            w2.colour_at(&r2, REF_RECURSION_LIMIT),
             Colour::new(0.38066, 0.47583, 0.2855)
         );
 
@@ -253,7 +286,7 @@ mod test {
             direction: Float4::new_vector(0.0, 0.0, -1.0),
         };
         assert_eq!(
-            w3.colour_at(&r3, REFLECTION_RECURSION_LIMIT),
+            w3.colour_at(&r3, REF_RECURSION_LIMIT),
             Colour::new(1.0, 1.0, 1.0)
         );
     }
@@ -289,7 +322,7 @@ mod test {
         s1.material.ambient = 1.0;
         let i1 = Intersection::new(&r1, &s1, 1.0);
         assert_eq!(
-            w1.reflected_colour(&i1, REFLECTION_RECURSION_LIMIT),
+            w1.reflected_colour(&i1, REF_RECURSION_LIMIT),
             Colour::black()
         );
 
@@ -309,7 +342,7 @@ mod test {
         };
         let i2 = Intersection::new(&r2, &plane, 2f64.sqrt());
         assert_eq!(
-            w2.reflected_colour(&i2, REFLECTION_RECURSION_LIMIT),
+            w2.reflected_colour(&i2, REF_RECURSION_LIMIT),
             Colour::new(0.19033, 0.23791, 0.14274)
         );
     }
@@ -362,6 +395,142 @@ mod test {
             origin: Float4::origin(),
             direction: Float4::new_vector(0.0, 1.0, 0.0),
         };
-        w2.colour_at(&r2, REFLECTION_RECURSION_LIMIT);
+        w2.colour_at(&r2, REF_RECURSION_LIMIT);
+    }
+
+    #[test]
+    fn refracted_colour() {
+        let w1 = World::default();
+        let s1 = &w1.objects[0];
+        let r1 = Ray {
+            origin: Float4::new_point(0.0, 0.0, -5.0),
+            direction: Float4::new_vector(0.0, 0.0, 1.0),
+        };
+        let is1 = Intersections::new(vec![
+            Intersection::new(&r1, &s1, 4.0),
+            Intersection::new(&r1, &s1, 6.0),
+        ]);
+        assert_eq!(
+            w1.refracted_colour(is1.get_intersection_at(0), REF_RECURSION_LIMIT),
+            Colour::black()
+        );
+
+        let mut w2 = World::default();
+        w2.objects[0].material.transparency = 1.0;
+        w2.objects[0].material.refractive_index = 1.5;
+        let r2 = Ray {
+            origin: Float4::new_point(0.0, 0.0, -5.0),
+            direction: Float4::new_vector(0.0, 0.0, 1.0),
+        };
+        let is2 = Intersections::new(vec![
+            Intersection::new(&r2, &w2.objects[0], 4.0),
+            Intersection::new(&r2, &w2.objects[0], 6.0),
+        ]);
+        assert_eq!(
+            w2.refracted_colour(is2.get_intersection_at(0), 0),
+            Colour::black()
+        );
+
+        let r3 = Ray {
+            origin: Float4::new_point(0.0, 0.0, 1.0 / 2f64.sqrt()),
+            direction: Float4::new_vector(0.0, 1.0, 0.0),
+        };
+        let is3 = Intersections::new(vec![
+            Intersection::new(&r3, &w2.objects[0], -1.0 / 2f64.sqrt()),
+            Intersection::new(&r3, &w2.objects[0], 1.0 / 2f64.sqrt()),
+        ]);
+        assert_eq!(
+            w2.refracted_colour(is3.get_intersection_at(1), REF_RECURSION_LIMIT),
+            Colour::black()
+        );
+
+        let mut w4 = World::default();
+        w4.objects[0].material.ambient = 1.0;
+        w4.objects[0].material.pattern = Some(Pattern {
+            transform: Matrix::identity(4),
+            kind: PatternKind::TestLocation,
+        });
+        w4.objects[1].material.transparency = 1.0;
+        w4.objects[1].material.refractive_index = 1.5;
+        let r4 = Ray {
+            origin: Float4::new_point(0.0, 0.0, 0.1),
+            direction: Float4::new_vector(0.0, 1.0, 0.0),
+        };
+        let is4 = Intersections::new(vec![
+            Intersection::new(&r4, &w4.objects[0], -0.9899),
+            Intersection::new(&r4, &w4.objects[1], -0.4899),
+            Intersection::new(&r4, &w4.objects[1], 0.4899),
+            Intersection::new(&r4, &w4.objects[0], 0.9899),
+        ]);
+        assert_eq!(
+            w4.refracted_colour(is4.get_intersection_at(2), REF_RECURSION_LIMIT),
+            Colour::new(0.0, 0.998874, 0.047218)
+        );
+
+        let mut w5 = World::default();
+        let floor = Object {
+            shape: Shape::Plane,
+            transform: translate(0.0, -1.0, 0.0),
+            material: Material {
+                transparency: 0.5,
+                refractive_index: 1.5,
+                ..Default::default()
+            },
+        };
+        w5.objects.push(floor.clone());
+        let ball = Object {
+            shape: Shape::Sphere,
+            transform: translate(0.0, -3.5, -0.5),
+            material: Material {
+                colour: Colour::new(1.0, 0.0, 0.0),
+                ambient: 0.5,
+                ..Default::default()
+            },
+        };
+        w5.objects.push(ball);
+        let r5 = Ray {
+            origin: Float4::new_point(0.0, 0.0, -3.0),
+            direction: Float4::new_vector(0.0, -1.0 / 2f64.sqrt(), 1.0 / 2f64.sqrt()),
+        };
+        let is5 = Intersections::new(vec![Intersection::new(&r5, &floor, 2f64.sqrt())]);
+        assert_eq!(
+            w5.shade_hit(is5.get_intersection_at(0), REF_RECURSION_LIMIT),
+            Colour::new(0.93642, 0.68642, 0.68642)
+        );
+    }
+
+    #[test]
+    fn schlick() {
+        let mut w = World::default();
+        let r = Ray {
+            origin: Float4::new_point(0.0, 0.0, -3.0),
+            direction: Float4::new_vector(0.0, -1.0 / 2f64.sqrt(), 1.0 / 2f64.sqrt()),
+        };
+        let floor = Object {
+            shape: Shape::Plane,
+            transform: translate(0.0, -1.0, 0.0),
+            material: Material {
+                reflective: 0.5,
+                transparency: 0.5,
+                refractive_index: 1.5,
+                ..Default::default()
+            },
+        };
+        w.objects.push(floor.clone());
+        let ball = Object {
+            shape: Shape::Plane,
+            transform: translate(0.0, -3.5, -0.5),
+            material: Material {
+                colour: Colour::new(1.0, 0.0, 0.0),
+                ambient: 0.5,
+                ..Default::default()
+            },
+        };
+        w.objects.push(ball);
+        let intersections = Intersections::new(vec![Intersection::new(&r, &floor, 2f64.sqrt())]);
+        assert_eq!(
+            w.shade_hit(intersections.get_intersection_at(0), REF_RECURSION_LIMIT),
+            Colour::new(0.93391, 0.69643, 0.69243)
+        );
     }
 }
