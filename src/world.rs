@@ -134,6 +134,7 @@ impl Default for World {
     }
 }
 
+#[cfg(test)]
 mod test {
     use crate::{
         float4::Float4,
@@ -141,7 +142,7 @@ mod test {
         pattern::{Pattern, PatternKind},
         ray::Ray,
         util::float_is_eq,
-        REF_RECURSION_LIMIT
+        REF_RECURSION_LIMIT,
     };
 
     use super::*;

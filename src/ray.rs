@@ -93,9 +93,6 @@ impl Intersection {
     pub fn distance(&self) -> f64 {
         self.distance
     }
-    fn point(&self) -> Float4 {
-        self.point
-    }
     pub fn eyev(&self) -> Float4 {
         self.eyev
     }
@@ -187,10 +184,6 @@ impl Intersections {
     }
 
     fn compute_refractive_indices(&mut self) {
-        // let Some(hi) = self.hit_index() else {
-        //     return;
-        // };
-
         for hi in 0..self.count() {
             let mut containers: Vec<&Object> = vec![];
             for (i, ix) in self.0.iter_mut().enumerate() {
@@ -222,9 +215,10 @@ impl Intersections {
     }
 }
 
+#[cfg(test)]
 mod test {
     use super::*;
-    use crate::{canvas, colour::Colour, matrix::*, object::Material, util::float_is_eq};
+    use crate::{matrix::*, object::Material, util::float_is_eq};
     use std::f64::consts::PI;
 
     #[test]
@@ -476,7 +470,7 @@ mod test {
         };
         let i = Intersection::new(&r, &s, 5.0);
         assert!(i.over_point().0[2] < -EPSILON / 2.0);
-        assert!(i.point().0[2] > i.over_point().0[2]);
+        assert!(i.point.0[2] > i.over_point().0[2]);
     }
 
     #[test]
@@ -574,7 +568,7 @@ mod test {
         let i = Intersection::new(&r, &s, 5.0);
 
         assert!(i.under_point().0[2] > EPSILON / 2.0);
-        assert!(i.point().0[2] < i.under_point().0[2]);
+        assert!(i.point.0[2] < i.under_point().0[2]);
     }
 
     #[test]

@@ -60,6 +60,7 @@ impl Pattern {
     }
 }
 
+#[cfg(test)]
 mod test {
     use crate::{
         matrix::{scale, translate},

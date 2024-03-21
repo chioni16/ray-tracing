@@ -210,6 +210,7 @@ pub fn view_transform(from: Float4, to: Float4, up: Float4) -> Matrix {
     orientation * translate(-from.0[0], -from.0[1], -from.0[2])
 }
 
+#[cfg(test)]
 mod test {
     use super::*;
     use crate::float4::*;

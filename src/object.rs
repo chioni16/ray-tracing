@@ -162,12 +162,10 @@ impl Default for Material {
     }
 }
 
+#[cfg(test)]
 mod test {
     use super::*;
-    use crate::canvas;
     use crate::pattern::PatternKind;
-    use crate::ray::*;
-    use std::path::Path;
 
     #[test]
     fn material_lighting() {

@@ -13,6 +13,7 @@ pub struct Camera {
     vsize: usize,
     half_width: f64,
     half_height: f64,
+    #[allow(dead_code)]
     field_of_view: f64,
     pixel_size: f64,
     transform: Matrix,
@@ -82,6 +83,7 @@ impl Camera {
     }
 }
 
+#[cfg(test)]
 mod test {
     use std::f64::consts::PI;
 

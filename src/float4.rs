@@ -125,6 +125,7 @@ impl From<Matrix> for Float4 {
     }
 }
 
+#[cfg(test)]
 mod test {
     use super::*;
 
