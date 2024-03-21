@@ -2,6 +2,7 @@ use std::sync::Mutex;
 
 use crate::{
     canvas::Canvas, colour::Colour, float4::Float4, matrix::Matrix, ray::Ray, world::World,
+    REFLECTION_RECURSION_LIMIT,
 };
 
 use itertools::Itertools;
@@ -68,7 +69,7 @@ impl Camera {
             .par_bridge()
             .for_each(|(y, x)| {
                 let ray = self.ray_for_pixel(x, y);
-                let colour = world.colour_at(&ray);
+                let colour = world.colour_at(&ray, REFLECTION_RECURSION_LIMIT);
                 let mut image = image_mutex.lock().unwrap();
                 image.write_pixel(x, y, colour);
 

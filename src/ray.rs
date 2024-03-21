@@ -32,6 +32,7 @@ pub struct Intersection {
     point: Float4,
     eyev: Float4,
     normalv: Float4,
+    reflectv: Float4,
     inside: bool,
     ray: Ray,
     object: Object,
@@ -44,6 +45,7 @@ impl Default for Intersection {
             point: Float4::origin(),
             eyev: Float4::new_vector(0.0, 0.0, 0.0),
             normalv: Float4::new_vector(0.0, 0.0, 0.0),
+            reflectv: Float4::new_vector(0.0, 0.0, 0.0),
             inside: false,
             ray: Ray {
                 origin: Float4::origin(),
@@ -67,12 +69,14 @@ impl Intersection {
         if inside {
             normalv = -normalv;
         }
+        let reflectv = ray.direction.reflect(normalv);
 
         Self {
             distance,
             point,
             eyev,
             normalv,
+            reflectv,
             inside,
             ray: *ray,
             object: object.clone(),
@@ -90,6 +94,9 @@ impl Intersection {
     }
     pub fn normalv(&self) -> Float4 {
         self.normalv
+    }
+    pub fn reflectv(&self) -> Float4 {
+        self.reflectv
     }
     pub fn inside(&self) -> bool {
         self.inside
@@ -376,5 +383,23 @@ mod test {
         let i = Intersection::new(&r, &s, 5.0);
         assert!(i.over_point().0[2] < -EPSILON / 2.0);
         assert!(i.point().0[2] > i.over_point().0[2]);
+    }
+
+    #[test]
+    fn reflectv() {
+        let o = Object {
+            shape: Shape::Plane,
+            transform: Matrix::identity(4),
+            material: Material::default(),
+        };
+        let r = Ray {
+            origin: Float4::new_point(0.0, 1.0, -1.0),
+            direction: Float4::new_vector(0.0, -1.0 / 2f64.sqrt(), 1.0 / 2f64.sqrt()),
+        };
+        let i = Intersection::new(&r, &o, 1.0 / 2f64.sqrt());
+        assert_eq!(
+            i.reflectv,
+            Float4::new_vector(0.0, 1.0 / 2f64.sqrt(), 1.0 / 2f64.sqrt())
+        );
     }
 }

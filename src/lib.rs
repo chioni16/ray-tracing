@@ -10,3 +10,5 @@ pub mod pattern;
 pub mod ray;
 pub mod util;
 pub mod world;
+
+const REFLECTION_RECURSION_LIMIT: u8 = 5;
